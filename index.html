@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BU Discussion Topics – Admin Tracker</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #4f8ef7;
+    --accent2: #7c5cbf;
+    --green: #2ecc71;
+    --yellow: #f39c12;
+    --red: #e74c3c;
+    --purple: #9b59b6;
+    --gray: #7f8c8d;
+    --text: #e8eaf0;
+    --subtext: #9ca3bc;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 14px; }
+
+  header {
+    background: linear-gradient(135deg, #1a1d27 0%, #22263a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 20px; font-weight: 700; color: var(--accent); display:flex;align-items:center;gap:10px; }
+  header .subtitle { font-size: 12px; color: var(--subtext); margin-top: 3px; }
+  .admin-badge {
+    background: linear-gradient(135deg, #4f8ef7, #7c5cbf);
+    color: #fff; font-size: 11px; font-weight: 700;
+    padding: 4px 12px; border-radius: 20px; letter-spacing: 1px;
+  }
+
+  .stats-row {
+    display: flex; gap: 16px; padding: 20px 28px; flex-wrap: wrap;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 22px;
+    flex: 1; min-width: 130px; text-align: center;
+  }
+  .stat-card .num { font-size: 28px; font-weight: 800; color: var(--accent); }
+  .stat-card .label { font-size: 11px; color: var(--subtext); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .toolbar {
+    display: flex; gap: 10px; padding: 0 28px 16px; flex-wrap: wrap; align-items: center;
+  }
+  .toolbar input[type=text] {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; width: 220px; outline: none;
+  }
+  .toolbar input[type=text]:focus { border-color: var(--accent); }
+  .toolbar select {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; outline: none; cursor: pointer;
+  }
+  .toolbar select:focus { border-color: var(--accent); }
+  .btn {
+    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-export { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-purple { background: var(--accent2); color: #fff; }
+
+  .table-wrap { padding: 0 28px 28px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+  thead tr { background: var(--surface2); position: sticky; top: 0; z-index: 10; }
+  thead th {
+    padding: 12px 12px; text-align: left; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.7px; color: var(--subtext);
+    border-bottom: 2px solid var(--border); white-space: nowrap;
+    cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--accent); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.4; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:hover { background: rgba(79,142,247,0.05); }
+  tbody tr.selected-row { background: rgba(79,142,247,0.12) !important; }
+  td { padding: 10px 12px; vertical-align: top; }
+
+  /* Editable cells */
+  .editable {
+    cursor: pointer; border-radius: 5px; padding: 4px 6px; min-height: 24px;
+    transition: background 0.15s; display: block;
+  }
+  .editable:hover { background: rgba(255,255,255,0.07); }
+  .editable:focus {
+    outline: 2px solid var(--accent); background: var(--surface2);
+    border-radius: 5px; min-width: 80px;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .badge-complete { background: rgba(46,204,113,0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+  .badge-progress { background: rgba(79,142,247,0.2); color: #4f8ef7; border: 1px solid #4f8ef7; }
+  .badge-awaiting { background: rgba(243,156,18,0.2); color: #f39c12; border: 1px solid #f39c12; }
+  .badge-unverified { background: rgba(127,140,141,0.2); color: #95a5a6; border: 1px solid #95a5a6; }
+  .badge-nomeeting { background: rgba(155,89,182,0.2); color: #9b59b6; border: 1px solid #9b59b6; }
+
+  /* Yes/No toggles */
+  .toggle-cell {
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer; padding: 3px 8px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; user-select: none;
+    transition: background 0.15s;
+  }
+  .toggle-yes { background: rgba(46,204,113,0.2); color: #2ecc71; }
+  .toggle-no { background: rgba(127,140,141,0.15); color: #7f8c8d; }
+
+  .issue-tag {
+    display: inline-block; background: rgba(231,76,60,0.15);
+    color: #e74c3c; border: 1px solid rgba(231,76,60,0.3);
+    border-radius: 4px; font-size: 10px; padding: 2px 7px; margin: 2px 2px 2px 0;
+    white-space: nowrap;
+  }
+
+  .action-btns { display: flex; gap: 6px; }
+  .btn-sm {
+    padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 11px; font-weight: 600; transition: opacity 0.2s;
+  }
+  .btn-sm:hover { opacity: 0.8; }
+  .btn-del { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .btn-dup { background: rgba(79,142,247,0.2); color: #4f8ef7; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 1000; align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px; width: 560px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal h2 { font-size: 16px; color: var(--accent); margin-bottom: 20px; }
+  .modal .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .modal .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .modal .form-group.full { grid-column: 1/-1; }
+  .modal label { font-size: 11px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; }
+  .modal input, .modal select, .modal textarea {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 7px; padding: 8px 12px; font-size: 13px; outline: none; width: 100%;
+    font-family: inherit;
+  }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--accent); }
+  .modal textarea { resize: vertical; min-height: 70px; }
+  .modal .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* Note callout */
+  .note-box {
+    margin: 0 28px 20px; background: rgba(243,156,18,0.1); border: 1px solid rgba(243,156,18,0.3);
+    border-radius: 9px; padding: 12px 16px; font-size: 12px; color: #f39c12;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+
+  .save-indicator {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--green); color: #fff; border-radius: 8px;
+    padding: 10px 18px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    display: none; z-index: 999;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+  .row-num { color: var(--subtext); font-size: 11px; text-align: center; width: 30px; }
+  .checkbox-col { width: 30px; text-align: center; }
+  input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🛡️ BU Discussion Topics Tracker</h1>
+    <div class="subtitle">Constellation Software · Harris Companies · Last updated: <span id="lastSaved">June 11, 2026</span></div>
+  </div>
+  <div style="display:flex;gap:12px;align-items:center;">
+    <span class="admin-badge">⚙️ ADMIN MODE</span>
+    <button class="btn btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+  </div>
+</header>
+
+<div class="stats-row" id="statsRow"></div>
+
+<div class="note-box">
+  ⚠️ <span><strong>Open Question for Steffen:</strong> Do we consider automatic updates of third-party apps (defined within the app itself, not via a centralized tool) as a valid patching method? Consult with Steffen before finalizing.</span>
+</div>
+
+<div class="toolbar">
+  <input type="text" id="searchBox" placeholder="🔍  Search any field…" oninput="renderTable()"/>
+  <select id="filterEmail" onchange="renderTable()">
+    <option value="">Email Sent: All</option>
+    <option value="Yes">Email Sent: Yes</option>
+    <option value="No">Email Sent: No</option>
+  </select>
+  <select id="filterMeeting" onchange="renderTable()">
+    <option value="">Meeting: All</option>
+    <option value="Yes">Meeting: Yes</option>
+    <option value="No">Meeting: No</option>
+  </select>
+  <select id="filterStatus" onchange="renderTable()">
+    <option value="">Status: All</option>
+    <option value="Complete">Complete</option>
+    <option value="In Progress">In Progress</option>
+    <option value="Awaiting Response">Awaiting Response</option>
+    <option value="No Action Needed">No Action Needed</option>
+    <option value="Plan Unverified">Plan Unverified</option>
+  </select>
+  <button class="btn btn-primary" onclick="openAddModal()">+ Add BU</button>
+  <button class="btn btn-danger" onclick="deleteSelected()" id="deleteSelectedBtn" style="display:none;">🗑 Delete Selected</button>
+</div>
+
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"/></th>
+        <th class="row-num">#</th>
+        <th onclick="sortBy('bu')">BU <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('contacts')">Primary Contact <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('emailSent')">Email Sent <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('reply')">Reply <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('meetingSet')">Meeting Set <span class="sort-icon">↕</span></th>
+        <th onclick="sortBy('status')">Status <span class="sort-icon">↕</span></th>
+        <th>Open Issues</th>
+        <th>Action Items / Outcome</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">➕ Add New BU</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>BU Name *</label>
+        <input type="text" id="f_bu" placeholder="e.g. Alpha"/>
+      </div>
+      <div class="form-group">
+        <label>Primary Contact</label>
+        <input type="text" id="f_contacts" placeholder="Name – Title"/>
+      </div>
+      <div class="form-group">
+        <label>Additional Contacts</label>
+        <input type="text" id="f_contacts2" placeholder="Name – Title"/>
+      </div>
+      <div class="form-group">
+        <label>Replied By</label>
+        <input type="text" id="f_repliedBy" placeholder="Contact name"/>
+      </div>
+      <div class="form-group">
+        <label>Email Sent</label>
+        <select id="f_emailSent"><option>No</option><option>Yes</option></select>
+      </div>
+      <div class="form-group">
+        <label>Reply Received</label>
+        <select id="f_reply"><option>No</option><option>Yes</option></select>
+      </div>
+      <div class="form-group">
+        <label>Meeting Set</label>
+        <select id="f_meetingSet"><option>No</option><option>Yes</option></select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f_status">
+          <option>Plan Unverified</option>
+          <option>In Progress</option>
+          <option>Awaiting Response</option>
+          <option>No Action Needed</option>
+          <option>Complete</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Open Issues / Topics to Discuss</label>
+        <textarea id="f_issues" placeholder="Separate issues with new lines or commas…"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Action Items / Meeting Outcome</label>
+        <textarea id="f_actions" placeholder="What needs to happen next?"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Notes</label>
+        <textarea id="f_notes" placeholder="Any additional notes…"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-export" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" onclick="saveModal()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="save-indicator" id="saveIndicator">✅ Changes saved!</div>
+
+<script>
+// ─── DATA ──────────────────────────────────────────────────────────────────
+let data = [
+  { id:1, bu:"AIX", contacts:"Bettina Marksteiner", contacts2:"Merten Storm – Director of Operations", repliedBy:"Bettina Marksteiner", emailSent:"Yes", reply:"Yes", meetingSet:"Yes", status:"In Progress", issues:"No Patch Method for Third Parties|Outdated OS (OS Patching)", actions:"AIX will deliver a remediation plan by end of June. Key topics to double-check confirmed in meeting.", notes:"Topics verified against Shahar's file — both items were previously marked complete but require review." },
+  { id:2, bu:"Alpha", contacts:"Peter Geedicke", contacts2:"", repliedBy:"Peter Geedicke", emailSent:"No", reply:"No", meetingSet:"No", status:"No Action Needed", issues:"", actions:"PHI/PII remediation plan in place until end of 2026. Third-party application plan until July 2026.", notes:"Plan reviewed and deemed logical. No meeting required." },
+  { id:3, bu:"CD", contacts:"Russell Trodd – Operations Manager", contacts2:"Andy Cripps – EVP", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:4, bu:"CITSL", contacts:"James Locksley – Technical Operations", contacts2:"Mat Johnson", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:5, bu:"CRP", contacts:"Jochen Crombach", contacts2:"Bastian Frohlich", repliedBy:"Jochen Crombach, Bastian Frohlich", emailSent:"Yes", reply:"Yes", meetingSet:"Yes", status:"In Progress", issues:"No Third-Party Patching|Outdated OS|No Encryption", actions:"Meeting held. Open security issues identified. Follow-up required.", notes:"Topics to discuss in addition to the plan shown to Shahar." },
+  { id:6, bu:"Datapharm", contacts:"Manfred Hoffer", contacts2:"", repliedBy:"Manfred Hoffer", emailSent:"Yes", reply:"Yes", meetingSet:"Yes", status:"In Progress", issues:"No Third-Party Patching|Outdated OS (OS Patching)|MFA Status (needs verification)", actions:"Meeting held. Third-party patching and OS patching were marked complete in Shahar's file — requires re-verification. MFA status to be confirmed.", notes:"" },
+  { id:7, bu:"FIS", contacts:"Alex O'Reilly – Manager R&D", contacts2:"Mat Johnson – EVP, Celeste Prussiani – Senior Software Engineer", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:8, bu:"eNoah", contacts:"David Howard – EVP", contacts2:"", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:9, bu:"EZWIM", contacts:"Arne Semsch", contacts2:"Jaco Van Rooijen – Technical Program Manager, Jurriaan Roeland – SVP", repliedBy:"Arne Semsch", emailSent:"Yes", reply:"Yes", meetingSet:"No", status:"Complete", issues:"", actions:"Plan reviewed and complete. All patching methods confirmed in place. No meeting required.", notes:"" },
+  { id:10, bu:"HHA", contacts:"Richard Pugh – Lead Platform Engineer", contacts2:"Craig Millard", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:11, bu:"iMDsoft GmbH", contacts:"Arne Semsch", contacts2:"", repliedBy:"Arne Semsch", emailSent:"Yes", reply:"Yes", meetingSet:"Yes", status:"In Progress", issues:"No Patching Tool for Third Parties", actions:"Cortex and third-party updates effectively managed — can be marked compliant. Third-party patching solution still needed. BU to return within a few days with a plan.", notes:"Limitations discussed in meeting." },
+  { id:12, bu:"iMDsoft LTD", contacts:"Yuval Gonen – EVP", contacts2:"Ziv Sacham – IT Manager", repliedBy:"Yuval Gonen", emailSent:"No", reply:"No", meetingSet:"No", status:"Complete", issues:"", actions:"Plan reviewed and complete. All methods confirmed in place.", notes:"" },
+  { id:13, bu:"Interfile", contacts:"Kennedy Chinganya", contacts2:"Warren Michal", repliedBy:"Kennedy Chinganya", emailSent:"No", reply:"No", meetingSet:"No", status:"No Action Needed", issues:"", actions:"Two-phase PII/PHI phase-out plan: Phase 1 by June 5 (encrypt and restrict access); Phase 2 by year-end (migrate to cloud with tooling protection).", notes:"" },
+  { id:14, bu:"Onefile", contacts:"Lee Ball – Infrastructure Manager", contacts2:"Davinder Auja – EVP", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:15, bu:"Rialtas", contacts:"Steve Mee – VP Operations", contacts2:"Tracey Neale – EVP", repliedBy:"Steve Mee", emailSent:"Yes", reply:"Yes", meetingSet:"No", status:"Awaiting Response", issues:"Workstation Patching Plan Needs Clarification", actions:"Clarification email sent regarding workstation patching plan. Awaiting response.", notes:"" },
+  { id:16, bu:"Wigasoft", contacts:"Peter Geedicke – EVP", contacts2:"Matthias Seelhofer – Product Owner", repliedBy:"Peter Geedicke", emailSent:"Yes", reply:"Yes", meetingSet:"No", status:"In Progress", issues:"", actions:"Dynamics proposed as the solution for PHI/PII management. Target implementation: December 2026.", notes:"" },
+  { id:17, bu:"Xanalys", contacts:"Rob Plant – Systems Admin", contacts2:"Mat Johnson – EVP", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:18, bu:"2team", contacts:"Yuval Gonen", contacts2:"Ziv Sacham – IT Manager", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"Plan Unverified", issues:"", actions:"Believed to have a plan — not yet reviewed.", notes:"" },
+  { id:19, bu:"I2", contacts:"Matthew Farenden – Manager Support", contacts2:"Gavin Shepheard – EVP", repliedBy:"", emailSent:"No", reply:"No", meetingSet:"No", status:"In Progress", issues:"", actions:"Yossi to check with Ben whether the presented plan is acceptable.", notes:"" },
+  { id:20, bu:"SIV", contacts:"Stefan Felder", contacts2:"", repliedBy:"Stefan Felder", emailSent:"No", reply:"No", meetingSet:"No", status:"No Action Needed", issues:"", actions:"Plan reviewed and deemed logical. No meeting required.", notes:"" },
+];
+
+let nextId = 21;
+let sortKey = null, sortAsc = true;
+let editingId = null;
+
+// ─── STATS ─────────────────────────────────────────────────────────────────
+function renderStats() {
+  const total = data.length;
+  const emailed = data.filter(r=>r.emailSent==="Yes").length;
+  const meetings = data.filter(r=>r.meetingSet==="Yes").length;
+  const complete = data.filter(r=>r.status==="Complete").length;
+  const hasIssues = data.filter(r=>r.issues && r.issues.trim()!=="").length;
+  const awaiting = data.filter(r=>r.status==="Awaiting Response").length;
+  document.getElementById("statsRow").innerHTML = `
+    <div class="stat-card"><div class="num">${total}</div><div class="label">Total BUs</div></div>
+    <div class="stat-card"><div class="num" style="color:#f39c12">${emailed}</div><div class="label">Emails Sent</div></div>
+    <div class="stat-card"><div class="num" style="color:#9b59b6">${meetings}</div><div class="label">Meetings Held</div></div>
+    <div class="stat-card"><div class="num" style="color:#2ecc71">${complete}</div><div class="label">Complete</div></div>
+    <div class="stat-card"><div class="num" style="color:#e74c3c">${hasIssues}</div><div class="label">Open Issues</div></div>
+    <div class="stat-card"><div class="num" style="color:#f39c12">${awaiting}</div><div class="label">Awaiting Response</div></div>
+  `;
+}
+
+// ─── STATUS BADGE ──────────────────────────────────────────────────────────
+function statusBadge(s) {
+  const map = {
+    "Complete": "badge-complete",
+    "In Progress": "badge-progress",
+    "Awaiting Response": "badge-awaiting",
+    "Plan Unverified": "badge-unverified",
+    "No Action Needed": "badge-nomeeting"
+  };
+  return `<span class="badge ${map[s]||'badge-unverified'}">${s||'—'}</span>`;
+}
+
+function toggleBadge(id, field) {
+  const row = data.find(r=>r.id===id);
+  if(!row) return;
+  row[field] = row[field]==="Yes" ? "No" : "Yes";
+  autoSave();
+  renderTable();
+  renderStats();
+}
+
+function issuesHTML(issues) {
+  if(!issues || !issues.trim()) return '<span style="color:var(--subtext);font-size:11px;">—</span>';
+  return issues.split("|").map(i=>i.trim()).filter(Boolean).map(i=>`<span class="issue-tag">${i}</span>`).join("");
+}
+
+// ─── RENDER TABLE ─────────────────────────────────────────────────────────
+function renderTable() {
+  const search = document.getElementById("searchBox").value.toLowerCase();
+  const fe = document.getElementById("filterEmail").value;
+  const fm = document.getElementById("filterMeeting").value;
+  const fs = document.getElementById("filterStatus").value;
+
+  let filtered = data.filter(r => {
+    const hay = Object.values(r).join(" ").toLowerCase();
+    if(search && !hay.includes(search)) return false;
+    if(fe && r.emailSent !== fe) return false;
+    if(fm && r.meetingSet !== fm) return false;
+    if(fs && r.status !== fs) return false;
+    return true;
+  });
+
+  if(sortKey) {
+    filtered.sort((a,b) => {
+      let av = (a[sortKey]||"").toString().toLowerCase();
+      let bv = (b[sortKey]||"").toString().toLowerCase();
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+  }
+
+  const tbody = document.getElementById("tableBody");
+  if(!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--subtext);">No matching records found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((r,i) => `
+    <tr id="row-${r.id}">
+      <td class="checkbox-col"><input type="checkbox" class="row-check" data-id="${r.id}" onchange="updateDeleteBtn()"/></td>
+      <td class="row-num">${i+1}</td>
+      <td><span class="editable" contenteditable="true" onblur="saveEdit(${r.id},'bu',this)">${r.bu||''}</span></td>
+      <td>
+        <span class="editable" contenteditable="true" onblur="saveEdit(${r.id},'contacts',this)" style="font-weight:600;">${r.contacts||''}</span>
+        ${r.contacts2 ? `<span style="color:var(--subtext);font-size:11px;display:block;margin-top:3px;">${r.contacts2}</span>` : ''}
+      </td>
+      <td><span class="toggle-cell ${r.emailSent==='Yes'?'toggle-yes':'toggle-no'}" onclick="toggleBadge(${r.id},'emailSent')" title="Click to toggle">${r.emailSent==='Yes'?'✔ Yes':'✘ No'}</span></td>
+      <td><span class="toggle-cell ${r.reply==='Yes'?'toggle-yes':'toggle-no'}" onclick="toggleBadge(${r.id},'reply')" title="Click to toggle">${r.reply==='Yes'?'✔ Yes':'✘ No'}</span></td>
+      <td><span class="toggle-cell ${r.meetingSet==='Yes'?'toggle-yes':'toggle-no'}" onclick="toggleBadge(${r.id},'meetingSet')" title="Click to toggle">${r.meetingSet==='Yes'?'✔ Yes':'✘ No'}</span></td>
+      <td onclick="openEditModal(${r.id})" style="cursor:pointer;" title="Click to edit status">${statusBadge(r.status)}</td>
+      <td>${issuesHTML(r.issues)}</td>
+      <td><span class="editable" contenteditable="true" onblur="saveEdit(${r.id},'actions',this)" style="font-size:12px;color:var(--subtext);">${r.actions||''}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-sm btn-dup" onclick="openEditModal(${r.id})">✏️ Edit</button>
+          <button class="btn-sm btn-del" onclick="deleteRow(${r.id})">🗑</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+// ─── INLINE EDIT ──────────────────────────────────────────────────────────
+function saveEdit(id, field, el) {
+  const row = data.find(r=>r.id===id);
+  if(!row) return;
+  row[field] = el.innerText.trim();
+  autoSave();
+  renderStats();
+}
+
+// ─── SORT ─────────────────────────────────────────────────────────────────
+function sortBy(key) {
+  if(sortKey===key) sortAsc=!sortAsc; else { sortKey=key; sortAsc=true; }
+  renderTable();
+}
+
+// ─── DELETE ───────────────────────────────────────────────────────────────
+function deleteRow(id) {
+  if(!confirm("Delete this BU entry?")) return;
+  data = data.filter(r=>r.id!==id);
+  autoSave(); renderTable(); renderStats();
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll(".row-check").forEach(c=>c.checked=cb.checked);
+  updateDeleteBtn();
+}
+
+function updateDeleteBtn() {
+  const any = [...document.querySelectorAll(".row-check")].some(c=>c.checked);
+  document.getElementById("deleteSelectedBtn").style.display = any ? "inline-block" : "none";
+}
+
+function deleteSelected() {
+  const ids = [...document.querySelectorAll(".row-check:checked")].map(c=>+c.dataset.id);
+  if(!ids.length) return;
+  if(!confirm(`Delete ${ids.length} selected BU(s)?`)) return;
+  data = data.filter(r=>!ids.includes(r.id));
+  autoSave(); renderTable(); renderStats();
+  document.getElementById("deleteSelectedBtn").style.display="none";
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────
+function openAddModal() {
+  editingId = null;
+  document.getElementById("modalTitle").textContent = "➕ Add New BU";
+  ["bu","contacts","contacts2","repliedBy","issues","actions","notes"].forEach(f => document.getElementById("f_"+f).value="");
+  document.getElementById("f_emailSent").value="No";
+  document.getElementById("f_reply").value="No";
+  document.getElementById("f_meetingSet").value="No";
+  document.getElementById("f_status").value="Plan Unverified";
+  document.getElementById("modalOverlay").classList.add("active");
+}
+
+function openEditModal(id) {
+  const r = data.find(x=>x.id===id);
+  if(!r) return;
+  editingId = id;
+  document.getElementById("modalTitle").textContent = "✏️ Edit BU: " + r.bu;
+  document.getElementById("f_bu").value = r.bu||"";
+  document.getElementById("f_contacts").value = r.contacts||"";
+  document.getElementById("f_contacts2").value = r.contacts2||"";
+  document.getElementById("f_repliedBy").value = r.repliedBy||"";
+  document.getElementById("f_emailSent").value = r.emailSent||"No";
+  document.getElementById("f_reply").value = r.reply||"No";
+  document.getElementById("f_meetingSet").value = r.meetingSet||"No";
+  document.getElementById("f_status").value = r.status||"Plan Unverified";
+  document.getElementById("f_issues").value = (r.issues||"").replace(/\|/g,"\n");
+  document.getElementById("f_actions").value = r.actions||"";
+  document.getElementById("f_notes").value = r.notes||"";
+  document.getElementById("modalOverlay").classList.add("active");
+}
+
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("active");
+}
+
+function saveModal() {
+  const bu = document.getElementById("f_bu").value.trim();
+  if(!bu) { alert("BU Name is required."); return; }
+  const rowData = {
+    bu, contacts: document.getElementById("f_contacts").value.trim(),
+    contacts2: document.getElementById("f_contacts2").value.trim(),
+    repliedBy: document.getElementById("f_repliedBy").value.trim(),
+    emailSent: document.getElementById("f_emailSent").value,
+    reply: document.getElementById("f_reply").value,
+    meetingSet: document.getElementById("f_meetingSet").value,
+    status: document.getElementById("f_status").value,
+    issues: document.getElementById("f_issues").value.trim().replace(/\n|,/g,"|").replace(/\|+/g,"|").replace(/^\||\|$/g,""),
+    actions: document.getElementById("f_actions").value.trim(),
+    notes: document.getElementById("f_notes").value.trim(),
+  };
+  if(editingId) {
+    const idx = data.findIndex(r=>r.id===editingId);
+    data[idx] = { ...data[idx], ...rowData };
+  } else {
+    data.push({ id: nextId++, ...rowData });
+  }
+  closeModal(); autoSave(); renderTable(); renderStats();
+}
+
+document.getElementById("modalOverlay").addEventListener("click", function(e){
+  if(e.target===this) closeModal();
+});
+
+// ─── EXPORT CSV ───────────────────────────────────────────────────────────
+function exportCSV() {
+  const headers = ["BU","Primary Contact","Additional Contacts","Replied By","Email Sent","Reply","Meeting Set","Status","Open Issues","Action Items","Notes"];
+  const keys = ["bu","contacts","contacts2","repliedBy","emailSent","reply","meetingSet","status","issues","actions","notes"];
+  const rows = [headers.join(",")];
+  data.forEach(r => {
+    rows.push(keys.map(k => `"${(r[k]||"").replace(/"/g,'""').replace(/\|/g,'; ')}"`).join(","));
+  });
+  const blob = new Blob([rows.join("\n")], {type:"text/csv"});
+  const a = document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="BU_Discussion_Topics_Export.csv"; a.click();
+}
+
+// ─── AUTO SAVE (localStorage) ─────────────────────────────────────────────
+function autoSave() {
+  localStorage.setItem("buTrackerData", JSON.stringify(data));
+  localStorage.setItem("buTrackerNextId", nextId);
+  const now = new Date();
+  document.getElementById("lastSaved").textContent = now.toLocaleString();
+  const ind = document.getElementById("saveIndicator");
+  ind.style.display="block";
+  setTimeout(()=>{ ind.style.display="none"; }, 2000);
+}
+
+function loadFromStorage() {
+  const saved = localStorage.getItem("buTrackerData");
+  const savedId = localStorage.getItem("buTrackerNextId");
+  if(saved) { data = JSON.parse(saved); }
+  if(savedId) { nextId = parseInt(savedId); }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+loadFromStorage();
+renderStats();
+renderTable();
+</script>
+</body>
+</html>
